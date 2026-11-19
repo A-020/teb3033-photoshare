@@ -20,8 +20,27 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Routes are mounted here in later steps
-// app.use('/api/auth', require('./routes/auth.routes'));
+const auth = require('./middleware/auth');
+
+// Routes
+app.use('/api/auth', require('./routes/auth.routes'));
+
+// Returns the logged-in user. A quick test of the auth middleware.
+app.get('/api/users/me', auth, async (req, res) => {
+  const [rows] = await pool.query(
+    'SELECT id, username, email, created_at FROM users WHERE id = ?',
+    [req.user.id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'User not found' });
+  res.json(rows[0]);
+});
+
+// Error handler: Express 5 sends errors from async routes here.
+// Log the details on the server and return a generic message (Appendix B).
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: 'Internal server error' });
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`API running on port ${PORT}`));
