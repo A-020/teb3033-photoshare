@@ -170,22 +170,99 @@ router.post('/', uploadPhoto, async (req, res) => {
   res.status(201).json(await withUrl(rows[0]));
 });
 
-// GET /api/photos?limit=20&offset=0
-// Feed: only photos from groups the user belongs to, newest first.
-router.get('/', async (req, res) => {
-  const limit = Math.min(toId(req.query.limit) || 20, 100);
-  const offset = Number.isInteger(Number(req.query.offset)) && Number(req.query.offset) > 0
-    ? Number(req.query.offset)
-    : 0;
+// Reads one query parameter as a trimmed string. A repeated parameter
+// (?tag=a&tag=b arrives as an array) is ignored rather than guessed at.
+function queryStr(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
 
-  // The JOIN on group_members filters the feed inside SQL
-  const [rows] = await pool.query(
-    `${PHOTO_SELECT}
-       JOIN group_members gm ON gm.group_id = p.group_id AND gm.user_id = ?
-      ORDER BY p.created_at DESC, p.id DESC
-      LIMIT ? OFFSET ?`,
-    [req.user.id, limit, offset]
-  );
+// True for a real calendar date in YYYY-MM-DD form (rejects 2026-02-30)
+function isDate(s) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+
+// Escapes the LIKE wildcards % and _ so a search for "50%" means the text "50%"
+function escapeLike(s) {
+  return s.replace(/[\\%_]/g, '\\$&');
+}
+
+// GET /api/photos
+// Feed, search and filter. All parameters are optional:
+//   groupId, uploader, tag, from, to (YYYY-MM-DD), q, sort (newest | oldest),
+//   limit (default 20, max 100), offset (default 0)
+// Only photos from groups the user belongs to are ever returned.
+router.get('/', async (req, res) => {
+  const q = req.query;
+  const limit = Math.min(toId(q.limit) || 20, 100);
+  const offset = Number.isInteger(Number(q.offset)) && Number(q.offset) > 0 ? Number(q.offset) : 0;
+
+  const groupIdRaw = queryStr(q.groupId);
+  const uploader = queryStr(q.uploader);
+  const tag = queryStr(q.tag).toLowerCase(); // tags are stored in lowercase
+  const from = queryStr(q.from);
+  const to = queryStr(q.to);
+  const keyword = queryStr(q.q);
+  const sort = queryStr(q.sort) || 'newest';
+
+  // Validate input (400 per Appendix B)
+  const groupId = groupIdRaw ? toId(groupIdRaw) : null;
+  if (groupIdRaw && !groupId) return res.status(400).json({ error: 'groupId must be a positive integer' });
+  if (from && !isDate(from)) return res.status(400).json({ error: 'from must be a date in YYYY-MM-DD format' });
+  if (to && !isDate(to)) return res.status(400).json({ error: 'to must be a date in YYYY-MM-DD format' });
+  if (from && to && from > to) return res.status(400).json({ error: 'from must not be after to' });
+  if (keyword.length > 100) return res.status(400).json({ error: 'q must be at most 100 characters' });
+  if (sort !== 'newest' && sort !== 'oldest') {
+    return res.status(400).json({ error: 'sort must be newest or oldest' });
+  }
+
+  // The JOIN on group_members is always present, so every filter below
+  // only narrows the user's own feed. It can never reach other groups.
+  let sql = `${PHOTO_SELECT}
+    JOIN group_members gm ON gm.group_id = p.group_id AND gm.user_id = ?`;
+  const where = [];
+  const params = [req.user.id];
+
+  // Each filter adds a fixed SQL fragment with ? placeholders.
+  // User input only ever goes into params, never into the SQL text.
+  if (groupId) {
+    where.push('p.group_id = ?');
+    params.push(groupId);
+  }
+  if (uploader) {
+    where.push('u.username = ?');
+    params.push(uploader);
+  }
+  if (from) {
+    where.push('p.created_at >= ?');
+    params.push(from);
+  }
+  if (to) {
+    // Whole "to" day included: before midnight of the next day
+    where.push('p.created_at < DATE_ADD(?, INTERVAL 1 DAY)');
+    params.push(to);
+  }
+  if (tag) {
+    where.push(`EXISTS (SELECT 1 FROM photo_tags pt JOIN tags t ON t.id = pt.tag_id
+                         WHERE pt.photo_id = p.id AND t.name = ?)`);
+    params.push(tag);
+  }
+  if (keyword) {
+    const like = `%${escapeLike(keyword)}%`;
+    where.push(`(p.caption LIKE ? OR EXISTS (SELECT 1 FROM comments c
+                  WHERE c.photo_id = p.id AND c.content LIKE ?))`);
+    params.push(like, like);
+  }
+
+  if (where.length) sql += ' WHERE ' + where.join(' AND ');
+
+  // The direction comes from a fixed choice, not from the raw input
+  const dir = sort === 'oldest' ? 'ASC' : 'DESC';
+  sql += ` ORDER BY p.created_at ${dir}, p.id ${dir} LIMIT ? OFFSET ?`;
+  params.push(limit, offset);
+
+  const [rows] = await pool.query(sql, params);
 
   res.json({
     limit,
