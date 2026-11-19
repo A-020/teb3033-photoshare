@@ -24,6 +24,7 @@ const auth = require('./middleware/auth');
 
 // Routes
 app.use('/api/auth', require('./routes/auth.routes'));
+app.use('/api/groups', require('./routes/group.routes'));
 
 // Returns the logged-in user. A quick test of the auth middleware.
 app.get('/api/users/me', auth, async (req, res) => {
