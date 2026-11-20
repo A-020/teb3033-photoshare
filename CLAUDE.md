@@ -16,7 +16,31 @@ Section 1.0 is done:
 - `database/schema.sql` defines 7 tables and is loaded into local MySQL.
 - AWS budget alert, IAM user `photoshare-dev` and access keys are set up by the student.
 
-Remaining work: sections 2.0 (backend), 3.0 (frontend) and 4.0 (deploy and test).
+Section 2.0 (backend) is done:
+- 2.1: Express server, shared MySQL pool in `src/config/db.js` and `GET /api/health`.
+- 2.2 to 2.3: Register and login with bcrypt and a JWT that expires in 1 day. `middleware/auth.js` checks the Bearer token and sets `req.user`.
+- 2.4: Friend groups in `routes/group.routes.js`. Group creation and the creator's membership run in one transaction. `middleware/membership.js` checks group membership.
+- 2.5: Photos in `routes/photo.routes.js` and `config/s3.js`. Multer memory storage with a 5 MB limit and an image type filter. S3 key `photos/<uuidv4><ext>`. The photo and tags insert in one transaction, and the S3 object is removed if the insert fails. Pre-signed URLs last 3600 seconds. Delete removes the row first (ownership checked in SQL), then the S3 object. The student chose to keep this order. Commit `d96ecda` holds this code but is named "2.4 Friend groups". The student chose to keep the name.
+- 2.6: Comments in `routes/comment.routes.js`, mounted at `/api`. The comment author or the photo owner may delete a comment.
+- 2.7: Feed search and filters (keyword, tag, uploader and date range) built as a dynamic WHERE clause with `?` parameters. LIKE input is escaped.
+- 2.8: `testing/postman_collection.json` with one request per Appendix A endpoint and a `token` variable. All 24 tests pass. `testing/helpers.ps1` holds PowerShell test helpers.
+
+Section 3.0 (frontend) is done:
+- 3.1: Vite and React setup. `src/api.js` is an axios client that adds the token. The Vite dev server proxies `/api` to the backend.
+- 3.2: `AuthContext.jsx`, Login and Register pages, `Navbar` and `ProtectedRoute`.
+- 3.3: Groups page, `GroupSelect`, `hooks/useGroups.js` and `selectedGroup.js` to remember the selected group.
+- 3.4: Feed and Upload pages with `PhotoCard`.
+- 3.5: PhotoDetail page with `CommentList`. Delete shows for the comment author and the photo owner.
+- 3.6: `SearchBar` and `filters.js`. Filters live in the URL query and use a 300 ms debounce.
+- 3.x: Frosted glass redesign following `docs/UI_DESIGN.md`. New shared components: Alert, AuthLayout, Avatar, BackdropDim, EmptyState, PageHeader, PasswordInput, SkeletonCard and Spinner. The glass tint is navy (`--glass-tint: rgba(22,28,51,0.65)`) so text keeps good contrast. API calls and app logic were not changed.
+
+Section 4.0 (deploy and test) is in progress:
+- 4.1 to 4.2: Done by the student in the AWS console. RDS MySQL (Public access: No), an IAM role for S3 and an EC2 server. The server runs Node 24 LTS (`uuid@14` needs Node 20.19 or later) with a 2 GB swap file for builds. S3 uses the IAM role, so the server `.env` has no AWS keys.
+- 4.3 (checkpoint passed): `deploy/nginx.conf` serves the React build from `/var/www/photoshare`, falls back to `index.html` for React Router, proxies `/api/` to `127.0.0.1:5000` and sets `client_max_body_size 10M`. PM2 runs the API as `photoshare-api`. `db.js` sets `timezone: '+08:00'` and runs `SET time_zone = '+08:00'` on each new connection, because RDS runs in UTC. Date filters then follow Malaysia days.
+
+Remaining work: 4.4 multi-user testing, 4.5 cost evidence and 4.6 teardown.
+
+To update the EC2 server after a push: `cd ~/app && git pull && pm2 restart photoshare-api`.
 
 ## How to work
 
