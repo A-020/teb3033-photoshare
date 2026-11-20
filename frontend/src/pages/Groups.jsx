@@ -3,6 +3,12 @@ import { Link } from 'react-router-dom'
 import api, { errorMessage } from '../api'
 import useGroups from '../hooks/useGroups'
 import { getSelectedGroup, setSelectedGroup } from '../selectedGroup'
+import { ArrowUpRight, MousePointerClick, UserPlus, Users } from 'lucide-react'
+import Alert from '../components/Alert'
+import Avatar from '../components/Avatar'
+import EmptyState from '../components/EmptyState'
+import PageHeader from '../components/PageHeader'
+import Spinner from '../components/Spinner'
 
 export default function Groups() {
   const { groups, loading, error, reload } = useGroups()
@@ -36,56 +42,74 @@ export default function Groups() {
   }
 
   return (
-    <div className="groups-layout">
-      <section>
-        <h1>My groups</h1>
+    <div>
+      <PageHeader title="Groups" subtitle="Create a group and add friends to share photos with them." />
 
-        <form className="card inline-form" onSubmit={createGroup}>
-          <input
-            placeholder="New group name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={100}
-            required
-          />
-          <button type="submit" className="btn" disabled={creating}>
-            {creating ? 'Creating...' : 'Create'}
-          </button>
-        </form>
-        {createError && <p className="error">{createError}</p>}
+      <div className="groups-layout">
+        <section className="stack">
+          <form className="glass panel stack" onSubmit={createGroup}>
+            <h2>New group</h2>
+            <label>
+              Group name
+              <div className="inline-form">
+                <input
+                  placeholder="For example: Class trip"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  maxLength={100}
+                  required
+                />
+                <button type="submit" className="btn btn-primary" disabled={creating}>
+                  {creating ? <><Spinner /> Creating...</> : <>Create <ArrowUpRight size={16} aria-hidden="true" /></>}
+                </button>
+              </div>
+            </label>
+            {createError && <Alert>{createError}</Alert>}
+          </form>
 
-        {loading && <p className="muted">Loading groups...</p>}
-        {error && <p className="error">{error}</p>}
-        {!loading && !error && groups.length === 0 && (
-          <p className="muted">You are not in any group yet. Create one above.</p>
-        )}
+          <div className="stack">
+            <h2 className="section-title">My groups</h2>
+            {loading && <p className="loading"><Spinner /> Loading groups...</p>}
+            {error && <Alert>{error}</Alert>}
+            {!loading && !error && groups.length === 0 && (
+              <div className="glass panel">
+                <EmptyState icon={Users} text="You are not in any group yet. Create one above." />
+              </div>
+            )}
 
-        <ul className="group-list">
-          {groups.map((g) => (
-            <li key={g.id}>
-              <button
-                type="button"
-                className={`group-item ${String(g.id) === selectedId ? 'active' : ''}`}
-                onClick={() => select(g.id)}
-              >
-                <span>{g.name}</span>
-                <span className="muted">
-                  {g.member_count} {g.member_count === 1 ? 'member' : 'members'}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+            {groups.length > 0 && (
+              <ul className="group-list">
+                {groups.map((g) => (
+                  <li key={g.id}>
+                    <button
+                      type="button"
+                      className={`group-item glass ${String(g.id) === selectedId ? 'active' : ''}`}
+                      onClick={() => select(g.id)}
+                      aria-pressed={String(g.id) === selectedId}
+                    >
+                      <span className="group-name">{g.name}</span>
+                      <span className="pill">
+                        {g.member_count} {g.member_count === 1 ? 'member' : 'members'}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
 
-      <section>
-        {selected ? (
-          // key resets the panel state when another group is chosen
-          <GroupMembers key={selected.id} group={selected} onMembersChanged={reload} />
-        ) : (
-          <p className="muted panel-placeholder">Select a group to see its members.</p>
-        )}
-      </section>
+        <section>
+          {selected ? (
+            // key resets the panel state when another group is chosen
+            <GroupMembers key={selected.id} group={selected} onMembersChanged={reload} />
+          ) : (
+            <div className="glass panel">
+              <EmptyState icon={MousePointerClick} text="Select a group to see its members." />
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   )
 }
@@ -133,42 +157,52 @@ function GroupMembers({ group, onMembersChanged }) {
   }
 
   return (
-    <div className="card">
+    <div className="glass panel stack">
       <div className="panel-header">
         <h2>{group.name}</h2>
-        <Link to={`/?groupId=${group.id}`} className="btn btn-small btn-ghost">
+        <Link to={`/?groupId=${group.id}`} className="btn-link">
           View photos
+          <ArrowUpRight size={16} aria-hidden="true" />
         </Link>
       </div>
 
-      <h3>Members</h3>
-      {loading ? (
-        <p className="muted">Loading...</p>
-      ) : (
-        <ul className="member-list">
-          {members.map((m) => (
-            <li key={m.id}>
-              <span>{m.username}</span>
-              <span className="muted">joined {new Date(m.joined_at).toLocaleDateString()}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div>
+        <h3>Members</h3>
+        {loading ? (
+          <p className="loading"><Spinner /> Loading members...</p>
+        ) : (
+          <ul className="member-list">
+            {members.map((m) => (
+              <li key={m.id}>
+                <span className="member-name">
+                  <Avatar name={m.username} size={28} />
+                  {m.username}
+                </span>
+                <span className="muted">joined {new Date(m.joined_at).toLocaleDateString()}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
-      <h3>Add a friend</h3>
-      <form className="inline-form" onSubmit={addMember}>
-        <input
-          placeholder="Friend's username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-        <button type="submit" className="btn" disabled={adding}>
-          {adding ? 'Adding...' : 'Add'}
-        </button>
+      <form className="stack" onSubmit={addMember}>
+        <label>
+          Add a friend
+          <div className="inline-form">
+            <input
+              placeholder="Friend's username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+            <button type="submit" className="btn btn-primary" disabled={adding}>
+              {adding ? <><Spinner /> Adding...</> : <><UserPlus size={16} aria-hidden="true" /> Add <ArrowUpRight size={16} aria-hidden="true" /></>}
+            </button>
+          </div>
+        </label>
+        {notice && <Alert type="success">{notice}</Alert>}
+        {error && <Alert>{error}</Alert>}
       </form>
-      {notice && <p className="success">{notice}</p>}
-      {error && <p className="error">{error}</p>}
     </div>
   )
 }

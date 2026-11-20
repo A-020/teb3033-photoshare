@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { FILTER_KEYS, TEXT_KEYS } from '../filters'
+import { Search, X } from 'lucide-react'
 
 const DEBOUNCE_MS = 300
 
@@ -75,32 +76,59 @@ export default function SearchBar() {
   const active = FILTER_KEYS.some((k) => searchParams.get(k)) || TEXT_KEYS.some((k) => draft[k])
 
   return (
-    <div className="card search-bar">
-      <input
-        className="search-q"
-        type="search"
-        placeholder="Search captions and comments"
-        value={draft.q}
-        onChange={(e) => setText('q', e.target.value)}
-        maxLength={100}
-      />
-      <input placeholder="Uploader" value={draft.uploader} onChange={(e) => setText('uploader', e.target.value)} />
-      <input placeholder="Tag" value={draft.tag} onChange={(e) => setText('tag', e.target.value)} />
-      <label className="inline-label">
-        From
-        <input type="date" value={from} max={to || undefined} onChange={(e) => setParam('from', e.target.value)} />
-      </label>
-      <label className="inline-label">
-        To
-        <input type="date" value={to} min={from || undefined} onChange={(e) => setParam('to', e.target.value)} />
-      </label>
-      <select value={searchParams.get('sort') || 'newest'} onChange={(e) => setParam('sort', e.target.value === 'newest' ? '' : e.target.value)}>
-        <option value="newest">Newest first</option>
-        <option value="oldest">Oldest first</option>
-      </select>
-      <button type="button" className="btn btn-ghost" onClick={clearFilters} disabled={!active}>
-        Clear filters
-      </button>
+    <div className="search-bar glass" role="search">
+      {/* Top row: keyword box with a search icon */}
+      <div className="search-main">
+        <Search className="search-icon" size={18} aria-hidden="true" />
+        <input
+          className="search-q"
+          type="search"
+          aria-label="Search captions and comments"
+          placeholder="Search captions and comments"
+          value={draft.q}
+          onChange={(e) => setText('q', e.target.value)}
+          maxLength={100}
+        />
+      </div>
+
+      {/* Second row: small glass pills */}
+      <div className="search-filters">
+        <input
+          className="pill-input"
+          aria-label="Uploader username"
+          placeholder="Uploader"
+          value={draft.uploader}
+          onChange={(e) => setText('uploader', e.target.value)}
+        />
+        <input
+          className="pill-input"
+          aria-label="Tag"
+          placeholder="Tag"
+          value={draft.tag}
+          onChange={(e) => setText('tag', e.target.value)}
+        />
+        <label className="pill-field">
+          <span>From</span>
+          <input type="date" value={from} max={to || undefined} onChange={(e) => setParam('from', e.target.value)} />
+        </label>
+        <label className="pill-field">
+          <span>To</span>
+          <input type="date" value={to} min={from || undefined} onChange={(e) => setParam('to', e.target.value)} />
+        </label>
+        <select
+          className="pill-input"
+          aria-label="Sort order"
+          value={searchParams.get('sort') || 'newest'}
+          onChange={(e) => setParam('sort', e.target.value === 'newest' ? '' : e.target.value)}
+        >
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+        <button type="button" className="btn-link clear-link" onClick={clearFilters} disabled={!active}>
+          <X size={14} aria-hidden="true" />
+          Clear filters
+        </button>
+      </div>
     </div>
   )
 }

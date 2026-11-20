@@ -1,0 +1,12 @@
+// Page title with a short subtitle. Optional actions (buttons, selects) sit on the right.
+export default function PageHeader({ title, subtitle, children }) {
+  return (
+    <div className="page-header">
+      <div>
+        <h1>{title}</h1>
+        {subtitle && <p className="page-subtitle">{subtitle}</p>}
+      </div>
+      {children && <div className="page-actions">{children}</div>}
+    </div>
+  )
+}

@@ -7,6 +7,13 @@ import { FILTER_KEYS } from '../filters'
 import GroupSelect from '../components/GroupSelect'
 import useGroups from '../hooks/useGroups'
 import { getSelectedGroup, setSelectedGroup } from '../selectedGroup'
+import { ArrowUpRight, ImageOff, SearchX } from 'lucide-react'
+import Alert from '../components/Alert'
+import BackdropDim from '../components/BackdropDim'
+import SkeletonCard from '../components/SkeletonCard'
+import EmptyState from '../components/EmptyState'
+import PageHeader from '../components/PageHeader'
+import Spinner from '../components/Spinner'
 
 const PAGE_SIZE = 12
 
@@ -99,31 +106,47 @@ export default function Feed() {
   const filtersActive = FILTER_KEYS.some((k) => searchParams.get(k))
 
   return (
-    <div>
-      <div className="feed-header">
-        <h1>Feed</h1>
-        <GroupSelect groups={groups} value={groupId} onChange={changeGroup} includeAll />
-        <Link to="/upload" className="btn">Upload photo</Link>
-      </div>
+    <div className="stack-lg">
+      <BackdropDim />
+
+      <PageHeader title="Feed" subtitle="Photos shared in your groups, newest first.">
+        <label className="header-field">
+          <span className="field-label">Group</span>
+          <GroupSelect groups={groups} value={groupId} onChange={changeGroup} includeAll />
+        </label>
+        <Link to="/upload" className="btn btn-primary">
+          Upload photo
+          <ArrowUpRight size={16} aria-hidden="true" />
+        </Link>
+      </PageHeader>
 
       <SearchBar />
 
-      {error && <p className="error">{error}</p>}
+      {error && <Alert>{error}</Alert>}
 
       {loading ? (
-        <p className="muted">Loading photos...</p>
+        <div className="photo-grid" aria-busy="true">
+          <span className="sr-only">Loading photos...</span>
+          {Array.from({ length: 6 }, (_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
       ) : photos.length === 0 ? (
-        <div className="empty-state">
+        <div className="glass panel">
           {filtersActive ? (
-            <>
-              <p>No photos match.</p>
-              <button type="button" className="btn btn-ghost" onClick={clearFilters}>Clear filters</button>
-            </>
+            <EmptyState icon={SearchX} text="No photos match.">
+              <button type="button" className="btn btn-primary" onClick={clearFilters}>
+                Clear filters
+                <ArrowUpRight size={16} aria-hidden="true" />
+              </button>
+            </EmptyState>
           ) : (
-            <>
-              <p>No photos yet.</p>
-              <Link to="/upload" className="btn">Upload the first one</Link>
-            </>
+            <EmptyState icon={ImageOff} text="No photos yet.">
+              <Link to="/upload" className="btn btn-primary">
+                Upload a photo
+                <ArrowUpRight size={16} aria-hidden="true" />
+              </Link>
+            </EmptyState>
           )}
         </div>
       ) : (
@@ -135,8 +158,8 @@ export default function Feed() {
           </div>
           {hasMore && (
             <div className="center">
-              <button type="button" className="btn btn-ghost" onClick={loadMore} disabled={loadingMore}>
-                {loadingMore ? 'Loading...' : 'Load more'}
+              <button type="button" className="btn btn-secondary" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? <><Spinner /> Loading...</> : 'Load more'}
               </button>
             </div>
           )}

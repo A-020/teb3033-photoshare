@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import api, { errorMessage } from '../api'
 import { useAuth } from '../context/AuthContext'
+import { Pencil, Send, Trash2 } from 'lucide-react'
+import Alert from './Alert'
+import Avatar from './Avatar'
+import Spinner from './Spinner'
 
 const MAX_LENGTH = 1000
 const REFRESH_MS = 10000 // other users' comments appear without a reload
@@ -89,72 +93,102 @@ export default function CommentList({ photoId, photoOwnerId }) {
   }
 
   return (
-    <section className="comments">
-      <h2>Comments ({comments.length})</h2>
+    <section className="comments" aria-label="Comments">
+      <div className="comments-head">
+        <h2>Comments</h2>
+        <span className="pill pill-accent">{comments.length}</span>
+      </div>
 
-      {loading && <p className="muted">Loading comments...</p>}
-      {!loading && comments.length === 0 && <p className="muted">No comments yet.</p>}
+      <div className="comment-scroll">
+        {loading && <p className="loading"><Spinner /> Loading comments...</p>}
+        {!loading && comments.length === 0 && <p className="muted">No comments yet. Start the conversation.</p>}
 
-      <ul className="comment-list">
-        {comments.map((c) => {
-          // Edit: author only. Delete: author or photo owner.
-          // The server enforces the same rules in SQL.
-          const mine = c.user_id === user.id
-          const canDelete = mine || photoOwnerId === user.id
-          const edited = c.updated_at !== c.created_at
-          return (
-            <li key={c.id} className="comment">
-              <div className="comment-head">
-                <strong>{c.username}</strong>
-                <span className="muted">
-                  {new Date(c.created_at).toLocaleString()}
-                  {edited && ' (edited)'}
-                </span>
-              </div>
+        <ul className="comment-list">
+          {comments.map((c) => {
+            // Edit: author only. Delete: author or photo owner.
+            // The server enforces the same rules in SQL.
+            const mine = c.user_id === user.id
+            const canDelete = mine || photoOwnerId === user.id
+            const edited = c.updated_at !== c.created_at
+            return (
+              <li key={c.id} className="comment">
+                <Avatar name={c.username} size={32} />
+                <div className="comment-main">
+                  <div className="comment-head">
+                    <strong>{c.username}</strong>
+                    <span className="comment-time">
+                      {new Date(c.created_at).toLocaleString()}
+                      {edited && <span className="faint"> (edited)</span>}
+                    </span>
+                  </div>
 
-              {editingId === c.id ? (
-                <form onSubmit={saveEdit} className="comment-edit">
-                  <textarea value={editText} onChange={(e) => setEditText(e.target.value)} maxLength={MAX_LENGTH} rows={2} autoFocus />
-                  <div className="row">
-                    <button type="submit" className="btn btn-small" disabled={saving || !editText.trim()}>
-                      {saving ? 'Saving...' : 'Save'}
-                    </button>
-                    <button type="button" className="btn btn-small btn-ghost" onClick={() => setEditingId(null)}>
-                      Cancel
+                  {editingId === c.id ? (
+                    <form onSubmit={saveEdit} className="comment-edit">
+                      <textarea
+                        aria-label="Edit comment"
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        maxLength={MAX_LENGTH}
+                        rows={2}
+                        autoFocus
+                      />
+                      <div className="row">
+                        <button type="submit" className="btn btn-primary" disabled={saving || !editText.trim()}>
+                          {saving ? <><Spinner /> Saving...</> : 'Save'}
+                        </button>
+                        <button type="button" className="btn btn-secondary" onClick={() => setEditingId(null)}>
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <p className="comment-body">{c.content}</p>
+                  )}
+                </div>
+
+                {canDelete && editingId !== c.id && (
+                  <div className="comment-actions">
+                    {mine && (
+                      <button type="button" className="icon-btn" onClick={() => startEdit(c)} aria-label="Edit comment">
+                        <Pencil size={14} aria-hidden="true" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn-danger"
+                      onClick={() => deleteComment(c.id)}
+                      aria-label="Delete comment"
+                    >
+                      <Trash2 size={14} aria-hidden="true" />
                     </button>
                   </div>
-                </form>
-              ) : (
-                <p className="comment-body">{c.content}</p>
-              )}
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      </div>
 
-              {canDelete && editingId !== c.id && (
-                <div className="row">
-                  {mine && (
-                    <button type="button" className="link-btn" onClick={() => startEdit(c)}>Edit</button>
-                  )}
-                  <button type="button" className="link-btn danger" onClick={() => deleteComment(c.id)}>Delete</button>
-                </div>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-
-      {error && <p className="error">{error}</p>}
+      {error && <Alert>{error}</Alert>}
 
       <form onSubmit={addComment} className="comment-form">
         <textarea
+          aria-label="Write a comment"
           placeholder="Write a comment"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           maxLength={MAX_LENGTH}
           rows={2}
         />
-        <div className="row space-between">
+        <div className="comment-form-foot">
           <span className="hint">{content.length}/{MAX_LENGTH}</span>
-          <button type="submit" className="btn" disabled={posting || !content.trim()}>
-            {posting ? 'Posting...' : 'Post'}
+          <button
+            type="submit"
+            className="send-btn"
+            disabled={posting || !content.trim()}
+            aria-label={posting ? 'Posting comment' : 'Post comment'}
+          >
+            {posting ? <Spinner /> : <Send size={17} aria-hidden="true" />}
           </button>
         </div>
       </form>

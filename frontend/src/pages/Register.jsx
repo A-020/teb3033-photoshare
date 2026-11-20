@@ -2,6 +2,11 @@ import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { errorMessage } from '../api'
+import Alert from '../components/Alert'
+import Spinner from '../components/Spinner'
+import AuthLayout from '../components/AuthLayout'
+import PasswordInput from '../components/PasswordInput'
+import { ArrowUpRight } from 'lucide-react'
 
 export default function Register() {
   const { user, register } = useAuth()
@@ -34,9 +39,12 @@ export default function Register() {
   }
 
   return (
-    <div className="auth-page">
-      <form className="card auth-card" onSubmit={handleSubmit}>
-        <h1>Create account</h1>
+    <AuthLayout>
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <div>
+          <h2 className="auth-title">Create account</h2>
+          <p className="muted">Join PhotoShare and share photos with your friend groups.</p>
+        </div>
         <label>
           Username
           <input value={username} onChange={(e) => setUsername(e.target.value)} maxLength={50} required autoFocus />
@@ -47,17 +55,17 @@ export default function Register() {
         </label>
         <label>
           Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
           <span className="hint">At least 8 characters</span>
         </label>
-        {error && <p className="error">{error}</p>}
-        <button type="submit" className="btn" disabled={busy}>
-          {busy ? 'Creating account...' : 'Register'}
+        {error && <Alert>{error}</Alert>}
+        <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+          {busy ? <><Spinner /> Creating account...</> : <>Register <ArrowUpRight size={16} aria-hidden="true" /></>}
         </button>
-        <p className="muted">
+        <p className="auth-switch">
           Already registered? <Link to="/login">Log in</Link>
         </p>
       </form>
-    </div>
+    </AuthLayout>
   )
 }

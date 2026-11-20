@@ -2,6 +2,11 @@ import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { errorMessage } from '../api'
+import Alert from '../components/Alert'
+import Spinner from '../components/Spinner'
+import AuthLayout from '../components/AuthLayout'
+import PasswordInput from '../components/PasswordInput'
+import { ArrowUpRight } from 'lucide-react'
 
 export default function Login() {
   const { user, login } = useAuth()
@@ -29,25 +34,28 @@ export default function Login() {
   }
 
   return (
-    <div className="auth-page">
-      <form className="card auth-card" onSubmit={handleSubmit}>
-        <h1>Log in</h1>
+    <AuthLayout>
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <div>
+          <h2 className="auth-title">Log in</h2>
+          <p className="muted">Welcome back. Log in to see your groups' photos.</p>
+        </div>
         <label>
           Email
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
         </label>
         <label>
           Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required />
         </label>
-        {error && <p className="error">{error}</p>}
-        <button type="submit" className="btn" disabled={busy}>
-          {busy ? 'Logging in...' : 'Log in'}
+        {error && <Alert>{error}</Alert>}
+        <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+          {busy ? <><Spinner /> Logging in...</> : <>Log in <ArrowUpRight size={16} aria-hidden="true" /></>}
         </button>
-        <p className="muted">
-          No account yet? <Link to="/register">Register</Link>
+        <p className="auth-switch">
+          No account yet? <Link to="/register">Create one</Link>
         </p>
       </form>
-    </div>
+    </AuthLayout>
   )
 }

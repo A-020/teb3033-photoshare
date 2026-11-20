@@ -4,6 +4,11 @@ import api, { errorMessage } from '../api'
 import GroupSelect from '../components/GroupSelect'
 import useGroups from '../hooks/useGroups'
 import { getSelectedGroup, setSelectedGroup } from '../selectedGroup'
+import { ArrowUpRight, ImagePlus, Upload as UploadIcon, Users } from 'lucide-react'
+import Alert from '../components/Alert'
+import EmptyState from '../components/EmptyState'
+import PageHeader from '../components/PageHeader'
+import Spinner from '../components/Spinner'
 
 // Same limits as the server. The client check gives quick feedback,
 // but the server check (multer) remains the real guard.
@@ -87,46 +92,74 @@ export default function Upload() {
 
   if (!groupsLoading && !groupsError && groups.length === 0) {
     return (
-      <div className="card narrow">
-        <h1>Upload photo</h1>
-        <p>Photos are shared inside a group. <Link to="/groups">Create or join a group</Link> first.</p>
+      <div className="narrow stack-lg">
+        <PageHeader title="Upload photo" subtitle="Share a photo with one of your groups." />
+        <div className="glass panel">
+          <EmptyState icon={Users} text="Photos are shared inside a group. Create or join a group first.">
+            <Link to="/groups" className="btn btn-primary">
+              Go to Groups
+              <ArrowUpRight size={16} aria-hidden="true" />
+            </Link>
+          </EmptyState>
+        </div>
       </div>
     )
   }
 
   return (
-    <form className="card narrow upload-form" onSubmit={handleSubmit}>
-      <h1>Upload photo</h1>
+    <div className="narrow stack-lg">
+      <PageHeader title="Upload photo" subtitle="Share a photo with one of your groups." />
+      <form className="glass panel upload-form" onSubmit={handleSubmit}>
+        {/* The real file input stays in the page (visually hidden but focusable).
+            The drop zone and "Change photo" are labels that open it. */}
+        <input
+          id="photo-input"
+          className="sr-only file-input"
+          type="file"
+          accept={ALLOWED_TYPES.join(',')}
+          onChange={handleFile}
+        />
+        {preview ? (
+          <div className="upload-preview-wrap">
+            <img className="upload-preview" src={preview} alt="Preview of the chosen photo" />
+            <label htmlFor="photo-input" className="btn-link change-photo">
+              <ImagePlus size={16} aria-hidden="true" />
+              Change photo
+            </label>
+          </div>
+        ) : (
+          <label htmlFor="photo-input" className="dropzone">
+            <span className="dropzone-icon">
+              <UploadIcon size={26} strokeWidth={1.5} aria-hidden="true" />
+            </span>
+            <span className="dropzone-title">Choose a photo</span>
+            <span className="hint">(JPG, PNG or WebP, up to 5 MB)</span>
+          </label>
+        )}
 
-      <label>
-        Photo
-        <input type="file" accept={ALLOWED_TYPES.join(',')} onChange={handleFile} />
-        <span className="hint">JPEG, PNG or WebP, up to 5 MB</span>
-      </label>
-      {preview && <img className="upload-preview" src={preview} alt="Preview" />}
+        <label>
+          Group
+          <GroupSelect groups={groups} value={effectiveGroup} onChange={setGroupId} />
+        </label>
 
-      <label>
-        Group
-        <GroupSelect groups={groups} value={effectiveGroup} onChange={setGroupId} />
-      </label>
+        <label>
+          Caption
+          <textarea value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={500} rows={3} />
+        </label>
 
-      <label>
-        Caption
-        <textarea value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={500} rows={3} />
-      </label>
+        <label>
+          Tags
+          <input placeholder="beach, trip" value={tags} onChange={(e) => setTags(e.target.value)} />
+          <span className="hint">Separate tags with commas</span>
+        </label>
 
-      <label>
-        Tags
-        <input placeholder="beach, trip" value={tags} onChange={(e) => setTags(e.target.value)} />
-        <span className="hint">Separate tags with commas</span>
-      </label>
+        {groupsError && <Alert>{groupsError}</Alert>}
+        {error && <Alert>{error}</Alert>}
 
-      {groupsError && <p className="error">{groupsError}</p>}
-      {error && <p className="error">{error}</p>}
-
-      <button type="submit" className="btn" disabled={uploading || !file || !effectiveGroup}>
-        {uploading ? 'Uploading...' : 'Upload'}
-      </button>
-    </form>
+        <button type="submit" className="btn btn-primary btn-block" disabled={uploading || !file || !effectiveGroup}>
+          {uploading ? <><Spinner /> Uploading...</> : <>Upload <ArrowUpRight size={16} aria-hidden="true" /></>}
+        </button>
+      </form>
+    </div>
   )
 }
