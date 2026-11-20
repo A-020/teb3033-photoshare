@@ -69,14 +69,16 @@ function toId(value) {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-// Shared SELECT for photo reads. Joins users for the uploader's username
-// and collects the tag names into one comma-separated string.
+// Shared SELECT for photo reads. Joins users for the uploader's username,
+// collects the tag names into one comma-separated string and counts comments.
+// The comments query uses the idx_photo index, so the count stays cheap.
 const PHOTO_SELECT = `
   SELECT p.id, p.user_id, u.username, p.group_id, g.name AS group_name,
          p.s3_key, p.caption, p.created_at,
          (SELECT GROUP_CONCAT(t.name ORDER BY t.name)
             FROM photo_tags pt JOIN tags t ON t.id = pt.tag_id
-           WHERE pt.photo_id = p.id) AS tags
+           WHERE pt.photo_id = p.id) AS tags,
+         (SELECT COUNT(*) FROM comments c WHERE c.photo_id = p.id) AS comment_count
     FROM photos p
     JOIN users u ON u.id = p.user_id
     JOIN friend_groups g ON g.id = p.group_id`;
